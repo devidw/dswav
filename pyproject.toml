@@ -1,0 +1,17 @@
+[tool.poetry]
+name = "dswav"
+version = "0.1.0"
+description = ""
+authors = ["David Wolf <68775926+devidw@users.noreply.github.com>"]
+readme = "README.md"
+
+[tool.poetry.dependencies]
+python = "3.11.6"
+gradio = "^4.4.1"
+setuptools = "^68.2.2"
+eng-to-ipa = "^0.0.2"
+
+
+[build-system]
+requires = ["poetry-core"]
+build-backend = "poetry.core.masonry.api"
