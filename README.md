@@ -6,7 +6,7 @@ Takes single audio input file
 
 Transcribes it using whisper and splits into sentences, chunks audio using ffmpeg into samples
 
-And builds metadata files that can be used in training code
+And builds metadata files that can be used for training
 
 ## Setup
 
