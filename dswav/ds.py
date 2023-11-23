@@ -6,7 +6,7 @@ import uuid
 from dswav.config import Config
 from concurrent.futures import ThreadPoolExecutor
 import random
-import eng_to_ipa as ipa
+from phonemizer import phonemize
 
 
 class Word:
@@ -30,7 +30,7 @@ class Sentence:
 
     @property
     def ipa(self):
-        return ipa.convert(self.sentence)
+        return phonemize(self.sentence)
 
     @property
     def start(self):

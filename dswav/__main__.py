@@ -39,9 +39,18 @@ def handler(project_name, input_path, lang):
 
 if __name__ == "__main__":
     with gr.Blocks(title="dswav") as ui:
-        project_name = gr.Textbox(label="Project Name")
-        input_path = gr.Textbox(label="Input Audio File Path")
-        lang = gr.Textbox(label="Input Audio Language Code", value="en")
+        project_name = gr.Textbox(
+            label="Project Name",
+            value="example",
+        )
+        input_path = gr.Textbox(
+            label="Input Audio File Path",
+            value="./projects/example/audio.mp3",
+        )
+        lang = gr.Textbox(
+            label="Input Audio Language Code",
+            value="en",
+        )
         button = gr.Button("Process")
         output = gr.Textbox(label="Output")
         button.click(handler, inputs=[project_name, input_path, lang], outputs=[output])

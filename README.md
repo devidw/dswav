@@ -1,10 +1,10 @@
 # dswav
 
-Tool to build dataset for audio models
+Tool to build dataset for audio model training
 
 Takes single audio input file 
 
-Transcribes it using whisper and splits into senteces, chunks audio using ffmpeg into samples
+Transcribes it using whisper and splits into sentences, chunks audio using ffmpeg into samples
 
 And builds metadata files that can be used in training code
 
