@@ -5,11 +5,17 @@ from dswav.config import Config
 from dswav.ds import process
 
 
-def handler(project_name, input_path, lang):
+def handler(
+    project_name,
+    input_path,
+    lang,
+    multi_sentence_share,
+):
     config = Config(
         project_name=project_name,
         input_path=input_path,
         lang=lang,
+        multi_sentence_share=multi_sentence_share,
     )
 
     if not os.path.exists(config.project_path):
@@ -17,9 +23,6 @@ def handler(project_name, input_path, lang):
 
     if not os.path.exists(f"{config.project_path}/ds"):
         os.mkdir(f"{config.project_path}/ds")
-
-    if not os.path.exists(f"{config.project_path}/ds/wavs"):
-        os.mkdir(f"{config.project_path}/ds/wavs")
 
     if not os.path.exists(config.stt_out_path):
         subprocess.run(
@@ -51,7 +54,15 @@ if __name__ == "__main__":
             label="Input Audio Language Code",
             value="en",
         )
+        multi_sentence_share = gr.Number(
+            label="Percentage of dataset examples with multiple sentences",
+            value=10,
+        )
         button = gr.Button("Process")
         output = gr.Textbox(label="Output")
-        button.click(handler, inputs=[project_name, input_path, lang], outputs=[output])
+        button.click(
+            handler,
+            inputs=[project_name, input_path, lang, multi_sentence_share],
+            outputs=[output],
+        )
     ui.launch()

@@ -5,11 +5,21 @@ class Config:
     project_name: str
     input_path: str
     lang: str
+    multi_sentence_share: float
 
-    def __init__(self, project_name, input_path, lang) -> None:
+    def __init__(self, project_name, input_path, lang, multi_sentence_share) -> None:
         self.project_name = project_name
         self.input_path = input_path
         self.lang = lang
+        self.multi_sentence_share = multi_sentence_share
+
+    def to_dict(self):
+        return {
+            "project_name": self.project_name,
+            "input_path": self.input_path,
+            "lang": self.lang,
+            "multi_sentence_share": self.multi_sentence_share,
+        }
 
     @property
     def project_path(self):

@@ -6,7 +6,8 @@ import uuid
 from dswav.config import Config
 from concurrent.futures import ThreadPoolExecutor
 import random
-from phonemizer import phonemize
+from dswav.styletts2 import text_to_phonemes
+import os
 
 
 class Word:
@@ -19,6 +20,13 @@ class Word:
         self.start = start
         self.end = end
 
+    def to_dict(self):
+        return {
+            "word": self.word,
+            "start": self.start,
+            "end": self.end,
+        }
+
 
 class Sentence:
     words: List[Word]
@@ -28,9 +36,20 @@ class Sentence:
         self.words = words
         self.id = str(uuid.uuid4())
 
+    def to_dict(self):
+        return {
+            "id": self.id,
+            "words": [word.to_dict() for word in self.words],
+            "phonemes": self.phonemes,
+            "start": self.start,
+            "end": self.end,
+            "duration": self.duration,
+            "sentence": self.sentence,
+        }
+
     @property
-    def ipa(self):
-        return phonemize(self.sentence)
+    def phonemes(self):
+        return text_to_phonemes(self.sentence)
 
     @property
     def start(self):
@@ -63,31 +82,77 @@ def flatten(segments):
     return words
 
 
-def get_sentences(words: List[Word]):
-    sentences: List[Sentence] = []
-    tmp: Sentence = Sentence([])
-    for word in words:
-        tmp.words.append(word)
-        if (
-            word.word == "."
-            or word.word.endswith("..")
-            or word.word.endswith("?")
-            or word.word.endswith("!")
-        ) and (
-            not tmp.sentence.lower().endswith(" mr.")
-            and not tmp.sentence.lower().endswith(" ms.")
-        ):
-            sentences.append(tmp)
-            tmp = Sentence([])
-    return sentences
-
-
 def process(config: Config):
+    """ """
+
+    def get_sentences(words: List[Word]):
+        """ """
+        sentences: List[Sentence] = []
+        tmp: Sentence = Sentence([])
+        is_multi = False
+
+        for word in words:
+            tmp.words.append(word)
+            if (
+                tmp.duration >= 1
+                and (
+                    word.word == "."
+                    or word.word.endswith("..")
+                    or word.word.endswith("?")
+                    or word.word.endswith("!")
+                )
+                and (
+                    not tmp.sentence.lower().endswith(" mr.")
+                    and not tmp.sentence.lower().endswith(" ms.")
+                )
+            ):
+                if (
+                    not is_multi
+                    and random.choices(
+                        population=[True, False],
+                        weights=[
+                            config.multi_sentence_share,
+                            100.0 - config.multi_sentence_share,
+                        ],
+                        k=1,
+                    )[0]
+                ):
+                    is_multi = True
+                    continue
+
+                sentences.append(tmp)
+                tmp = Sentence([])
+                is_multi = False
+
+        return sentences
+
     with open(config.stt_out_path, "r") as file:
         stt_data = json.load(file)
 
-    words = flatten(stt_data["segments"])
-    sentences = get_sentences(words)
+    if not os.path.exists(f"{config.project_path}/sentences.json"):
+        words = flatten(stt_data["segments"])
+        sentences = get_sentences(words)
+
+        with open(f"{config.project_path}/sentences.json", "w") as f:
+            f.write(
+                json.dumps(
+                    list(map(lambda x: x.to_dict(), sentences)),
+                    indent=4,
+                )
+            )
+
+    with open(f"{config.project_path}/sentences.json", "r") as f:
+        raw = json.loads(f.read())
+
+    sentences: List[Sentence] = []
+
+    for single in raw:
+        words = list(
+            map(lambda x: Word(x["word"], x["start"], x["end"]), single["words"])
+        )
+        sentence = Sentence(words)
+        sentence.id = single["id"]
+        sentences.append(sentence)
 
     def process_sentence(filename: str, sentence: Sentence):
         subprocess.run(
@@ -106,14 +171,17 @@ def process(config: Config):
             ],
         )
 
-    with ThreadPoolExecutor(max_workers=32) as executor:
-        futures = []
-        for sentence in sentences:
-            futures.append(
-                executor.submit(process_sentence, str(sentence.id), sentence)
-            )
-        for future in futures:
-            future.result()
+    if not os.path.exists(f"{config.project_path}/ds/wavs"):
+        os.mkdir(f"{config.project_path}/ds/wavs")
+
+        with ThreadPoolExecutor(max_workers=32) as executor:
+            futures = []
+            for sentence in sentences:
+                futures.append(
+                    executor.submit(process_sentence, str(sentence.id), sentence)
+                )
+            for future in futures:
+                future.result()
 
     with open(f"{config.project_path}/ds/metadata.csv", "w") as f:
         csv_content = "\n".join(
@@ -124,11 +192,11 @@ def process(config: Config):
     train_list, val_list = split_list(sentences, 0.99)
 
     with open(f"{config.project_path}/ds/train_list.txt", "w") as f:
-        data = "\n".join([f"{line.id}.wav|{line.ipa}" for line in train_list])
+        data = "\n".join([f"{line.id}.wav|{line.phonemes}|0" for line in train_list])
         f.write(data)
 
     with open(f"{config.project_path}/ds/val_list.txt", "w") as f:
-        data = "\n".join([f"{line.id}.wav|{line.ipa}" for line in val_list])
+        data = "\n".join([f"{line.id}.wav|{line.phonemes}|0" for line in val_list])
         f.write(data)
 
     shutil.make_archive(
