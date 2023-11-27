@@ -11,6 +11,7 @@ gradio = "^4.4.1"
 setuptools = "^68.2.2"
 phonemizer = "^3.2.1"
 nltk = "^3.8.1"
+pydub = "^0.25.1"
 
 
 [build-system]

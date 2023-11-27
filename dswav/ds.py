@@ -1,13 +1,15 @@
 import json
 import shutil
 import subprocess
-from typing import List
+from typing import List, Optional
 import uuid
 from dswav.config import Config
 from concurrent.futures import ThreadPoolExecutor
 import random
 from dswav.styletts2 import text_to_phonemes
 import os
+from dswav.utils import copy_files, split_list
+from pydub import AudioSegment
 
 
 class Word:
@@ -30,15 +32,18 @@ class Word:
 
 class Sentence:
     words: List[Word]
-    id: str
+    content: str = ""
+    _id: Optional[str] = None
 
-    def __init__(self, words: List[Word]) -> None:
+    def __init__(self, id: Optional[str], content: str, words: List[Word]) -> None:
+        self._id = id if id else None
+        self.content = content
         self.words = words
-        self.id = str(uuid.uuid4())
 
     def to_dict(self):
         return {
             "id": self.id,
+            "content": self.content,
             "words": [word.to_dict() for word in self.words],
             "phonemes": self.phonemes,
             "start": self.start,
@@ -48,8 +53,10 @@ class Sentence:
         }
 
     @property
-    def phonemes(self):
-        return text_to_phonemes(self.sentence)
+    def id(self):
+        if self._id:
+            return self._id
+        return f"{self.start}-{self.end}"
 
     @property
     def start(self):
@@ -65,7 +72,16 @@ class Sentence:
 
     @property
     def sentence(self):
-        return "".join(map(lambda x: x.word, self.words)).strip()
+        if len(self.words) > 0 and len(self.content) == 0:
+            return "".join(map(lambda x: x.word, self.words)).strip()
+        elif len(self.words) == 0 and len(self.content) > 0:
+            return self.content
+        else:
+            raise Exception("bad sentence has content and words should only have one")
+
+    @property
+    def phonemes(self):
+        return text_to_phonemes(self.sentence)
 
 
 def flatten(segments):
@@ -88,7 +104,7 @@ def process(config: Config):
     def get_sentences(words: List[Word]):
         """ """
         sentences: List[Sentence] = []
-        tmp: Sentence = Sentence([])
+        tmp: Sentence = Sentence(None, "", [])
         is_multi = False
 
         for word in words:
@@ -121,7 +137,7 @@ def process(config: Config):
                     continue
 
                 sentences.append(tmp)
-                tmp = Sentence([])
+                tmp = Sentence(None, "", [])
                 is_multi = False
 
         return sentences
@@ -150,8 +166,7 @@ def process(config: Config):
         words = list(
             map(lambda x: Word(x["word"], x["start"], x["end"]), single["words"])
         )
-        sentence = Sentence(words)
-        sentence.id = single["id"]
+        sentence = Sentence(None, "", words)
         sentences.append(sentence)
 
     def process_sentence(filename: str, sentence: Sentence):
@@ -171,25 +186,29 @@ def process(config: Config):
             ],
         )
 
-    if not os.path.exists(f"{config.project_path}/ds/wavs"):
-        os.mkdir(f"{config.project_path}/ds/wavs")
+    # if not os.path.exists(f"{config.project_path}/ds/wavs"):
+    #     os.mkdir(f"{config.project_path}/ds/wavs")
 
-        with ThreadPoolExecutor(max_workers=32) as executor:
-            futures = []
-            for sentence in sentences:
-                futures.append(
-                    executor.submit(process_sentence, str(sentence.id), sentence)
-                )
-            for future in futures:
-                future.result()
+    with ThreadPoolExecutor(max_workers=32) as executor:
+        futures = []
+        for sentence in sentences:
+            futures.append(
+                executor.submit(process_sentence, str(sentence.id), sentence)
+            )
+        for future in futures:
+            future.result()
+
+    train_list, val_list = split_list(sentences, 0.99)
+
+    merge_sentences = add_merges(config)
+
+    train_list.extend(merge_sentences)
 
     with open(f"{config.project_path}/ds/metadata.csv", "w") as f:
         csv_content = "\n".join(
-            [f"{s.id}|{s.sentence}|{s.sentence}" for s in sentences]
+            [f"{s.id}|{s.sentence}|{s.sentence}" for s in sentences + merge_sentences]
         )
         f.write(csv_content)
-
-    train_list, val_list = split_list(sentences, 0.99)
 
     with open(f"{config.project_path}/ds/train_list.txt", "w") as f:
         data = "\n".join([f"{line.id}.wav|{line.phonemes}|0" for line in train_list])
@@ -206,19 +225,26 @@ def process(config: Config):
     )
 
 
-def split_list(input_list, percentage):
-    """
-    Splits a list into two parts with the given percentage.
+def add_merges(config: Config):
+    sentences: List[Sentence] = []
+    for merge in config.merges:
+        with open(f"{merge}/index.json", "r") as f:
+            index = json.loads(f.read())
+        sentences.extend(
+            list(map(lambda x: Sentence(x["id"], x["content"], []), index))
+        )
+        copy_files(f"{merge}/wavs", f"{config.project_path}/ds/wavs")
+    return sentences
 
-    :param input_list: The list to be split.
-    :param percentage: The percentage of the first list (between 0 and 1).
-    :return: Two lists.
-    """
-    if not 0 <= percentage <= 1:
-        raise ValueError("Percentage must be between 0 and 1")
 
-    list_length = len(input_list)
-    split_index = int(list_length * percentage)
+def add_silence_if_needed(folder_path):
+    for filename in os.listdir(folder_path):
+        if filename.endswith(".wav"):
+            file_path = os.path.join(folder_path, filename)
+            audio = AudioSegment.from_wav(file_path)
 
-    random.shuffle(input_list)
-    return input_list[:split_index], input_list[split_index:]
+            if len(audio) < 1000:  # Audio length less than 1000 ms (1 second)
+                silence = AudioSegment.silent(duration=1000 - len(audio))
+                new_audio = audio + silence
+                new_audio.export(file_path, format="wav")  # Overwrite original file
+                print(f"done {file_path}")
