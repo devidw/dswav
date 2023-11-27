@@ -96,4 +96,4 @@ if __name__ == "__main__":
             )
             button = gr.Button()
             button.click(fix_audio_handler, inputs=[project_name])
-    ui.launch()
+    ui.launch(server_name="0.0.0.0")

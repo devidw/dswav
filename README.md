@@ -8,15 +8,15 @@ Transcribes it using whisper and splits into sentences, chunks audio using ffmpe
 
 And builds metadata files that can be used for training
 
-## Setup
+## Usage
 
 ```bash
 git clone https://github.com/devidw/dswav
 cd dswav
 
-poetry install
+make docker_build
 
-poetry run python -m dswav
+make docker_run
 ```
 
 ## TTS, LJSpeech
@@ -35,11 +35,20 @@ Also supports output format for StyleTTS2
 - `val_list.txt` 1 %
 - `wavs/`
 
+## Development
+
+- need ffmpeg, espeak, whipser
+
+```bash
+git clone https://github.com/devidw/dswav
+cd dswav
+
+poetry install
+
+make dev
+```
+
 ## notes
 
-- make sure you have `openai-whisper` installed and `whisper` cli is available (i run into issues adding it as poetry
-  dep under macos, otherwise would have been using the py pkg and adding as poetry dep -
-  https://github.com/openai/triton/issues/1057)
-- `ffmpeg` cli is also required to split input audio into chunks
 - currently splitting based on sentences and not silence, which sometimes still keeps artifacts at the end, should
   rather detect silence to have clean examples
