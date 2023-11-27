@@ -11,12 +11,10 @@ And builds metadata files that can be used for training
 ## Usage
 
 ```bash
-git clone https://github.com/devidw/dswav
-cd dswav
-
-make docker_build
-
-make docker_run
+docker run \
+  -p 7860:7860 \
+  -v ./projects:/app/projects \
+  ghcr.io/devidw/dswav:latest
 ```
 
 ## TTS, LJSpeech

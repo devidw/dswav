@@ -17,16 +17,22 @@ stt:
 .PHONY: docker_build
 docker_build:
 	docker build \
-		-t dswav:latest \
+		-t ghcr.io/devidw/dswav:latest \
 		.
+
+.PHONY: docker_push
+docker_push:
+	docker push \
+		ghcr.io/devidw/dswav:latest
 
 .PHONY: docker_run
 docker_run:
 	-docker stop dswav
 	-docker rm dswav
 	docker run \
+		-d \
 		--name dswav \
 		-p 7860:7860 \
 		-v ./projects:/app/projects \
-		dswav:latest
+		ghcr.io/devidw/dswav:latest
 	docker logs -f dswav
