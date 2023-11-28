@@ -7,16 +7,11 @@ class Config:
     input_path: str
     lang: str
     multi_sentence_share: float
-    merges: List[str]
 
-    def __init__(
-        self, project_name, input_path, lang, multi_sentence_share, merges
-    ) -> None:
+    def __init__(self, project_name, input_path, lang) -> None:
         self.project_name = project_name
         self.input_path = input_path
         self.lang = lang
-        self.multi_sentence_share = multi_sentence_share
-        self.merges = merges
 
     @property
     def project_path(self):

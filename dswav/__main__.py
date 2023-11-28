@@ -2,89 +2,82 @@ import gradio as gr
 import os
 import subprocess
 from dswav.config import Config
-from dswav.ds import process, add_silence_if_needed
+from dswav.ds import transcribe, add_silence_if_needed, combine_many, build_ds
 
 
-def build_handler(project_name, input_path, lang, multi_sentence_share, merges: str):
+def transcribe_handler(project_name, input_path, lang):
     config = Config(
         project_name=project_name,
         input_path=input_path,
         lang=lang,
-        multi_sentence_share=multi_sentence_share,
-        merges=list(map(lambda x: x.strip(), merges.split("\n"))),
     )
-
-    if not os.path.exists(config.project_path):
-        os.mkdir(config.project_path)
-
-    if not os.path.exists(f"{config.project_path}/ds"):
-        os.mkdir(f"{config.project_path}/ds")
-
-    if not os.path.exists(config.stt_out_path):
-        subprocess.run(
-            [
-                "make",
-                "stt",
-                f"FILE={config.input_path}",
-                f"OUT_DIR={config.project_path}",
-                f"LANG={config.lang}",
-            ]
-        )
-
-    process(config)
-
-    return "done"
+    transcribe(config)
+    print("done")
 
 
 def fix_audio_handler(project_name):
-    add_silence_if_needed(f"./projects/{project_name}/ds/wavs")
+    add_silence_if_needed(project_name)
+    print("done")
+
+
+def merge_handler(project_name: str, merges: str):
+    paths = list(map(lambda x: x.strip(), merges.split("\n")))
+    combine_many(project_name, paths)
+    print("done")
+
+
+def setup_handler(project_name: str):
+    if not os.path.exists(f"./projects/{project_name}"):
+        os.mkdir(f"./projects/{project_name}")
+
+    if not os.path.exists(f"./projects/{project_name}/ds"):
+        os.mkdir(f"./projects/{project_name}/ds")
+
+    if not os.path.exists(f"./projects/{project_name}/ds/wavs"):
+        os.mkdir(f"./projects/{project_name}/ds/wavs")
+
+    print("done")
+
+
+def build_handler(project_name: str):
+    build_ds(project_name)
+    print("done")
 
 
 if __name__ == "__main__":
     DEV = os.environ.get("USER") == "devidw"
+    CONFIG = {}
+
+    if DEV:
+        with open("./config.json", "r") as f:
+            import json
+
+            CONFIG = json.loads(f.read())
 
     with gr.Blocks(title="dswav") as ui:
         project_name = gr.Textbox(
             label="Project Name",
-            value="example" if not DEV else "allison_1h",
+            value="example" if not DEV else CONFIG["project_name"],
         )
-        with gr.Tab("builder"):
-            input_path = gr.Textbox(
-                label="Input Audio File Path",
-                value="./projects/example/audio.mp3"
-                if not DEV
-                else "/Users/devidw/Desktop/allison_1h.wav",
-            )
-            lang = gr.Textbox(
-                label="Input Audio Language Code",
-                value="en",
-            )
-            multi_sentence_share = gr.Number(
-                label="Percentage of dataset examples with multiple sentences",
-                value=10,
-            )
+        button = gr.Button()
+        button.click(setup_handler, inputs=[project_name])
+
+        with gr.Tab("build"):
+            button = gr.Button()
+            button.click(build_handler, inputs=[project_name])
+
+        with gr.Tab("combine"):
             merges = gr.TextArea(
                 label="""
                         List of paths to folders with contents of /index.json [{id: string, content: string}]
                         and /wavs/{id}.wav that will be merged with dataset
                         One path per line
-                        All those are ensured to go into train_list and won't be used when sampling val_list (1%)
                         """,
-                value="" if not DEV else "/Users/devidw/Desktop/allison_voice 2",
+                value="" if not DEV else CONFIG["merges"],
             )
-            button = gr.Button("Process")
-            output = gr.Textbox(label="Output")
-            button.click(
-                build_handler,
-                inputs=[
-                    project_name,
-                    input_path,
-                    lang,
-                    multi_sentence_share,
-                    merges,
-                ],
-                outputs=[output],
-            )
+            button = gr.Button()
+            button.click(merge_handler, inputs=[project_name, merges])
+
         with gr.Tab("fix audio length"):
             gr.Markdown(
                 """
@@ -96,4 +89,26 @@ if __name__ == "__main__":
             )
             button = gr.Button()
             button.click(fix_audio_handler, inputs=[project_name])
+
+        with gr.Tab("transcribe"):
+            input_path = gr.Textbox(
+                label="Input Audio File Path",
+                value="./projects/example/audio.mp3"
+                if not DEV
+                else CONFIG["audio_input"],
+            )
+            lang = gr.Textbox(
+                label="Input Audio Language Code",
+                value="en",
+            )
+            button = gr.Button("Process")
+            button.click(
+                transcribe_handler,
+                inputs=[
+                    project_name,
+                    input_path,
+                    lang,
+                ],
+            )
+
     ui.launch(server_name="0.0.0.0")
