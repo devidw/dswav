@@ -15,6 +15,11 @@ from dswav.sentence import (
     write_sentences,
     read_sentences,
 )
+from dswav.styletts2 import text_to_phonemes
+
+
+SILENCE_EOS = " …"
+SILENCE_LENGTH_MS = 100
 
 
 def add_silence_if_needed(project_name: str):
@@ -30,6 +35,18 @@ def add_silence_if_needed(project_name: str):
                 print(f"done {file_path}")
 
 
+def add_silence(project_name: str):
+    for filename in os.listdir(f"./projects/{project_name}/ds/wavs"):
+        if not filename.endswith(".wav"):
+            continue
+        file_path = os.path.join(f"./projects/{project_name}/ds/wavs", filename)
+        audio = AudioSegment.from_wav(file_path)
+        silence = AudioSegment.silent(duration=SILENCE_LENGTH_MS)
+        new_audio = audio + silence
+        new_audio.export(file_path, format="wav")
+        print(f"done {file_path}")
+
+
 def combine_many(project_name: str, merges: List[str]):
     sentences: List[Sentence] = []
     for merge in merges:
@@ -42,7 +59,7 @@ def combine_many(project_name: str, merges: List[str]):
     write_sentences(project_name, sentences)
 
 
-def build_ds(project_name: str):
+def build_ds(project_name: str, add_ending_silence: bool):
     sentences: List[Sentence] = read_sentences(project_name)
 
     train_list, val_list = split_list(sentences, 0.99)
@@ -53,12 +70,21 @@ def build_ds(project_name: str):
         )
         f.write(csv_content)
 
+    def get_phonemes(sentence: Sentence):
+        return text_to_phonemes(
+            sentence.sentence
+            if not add_ending_silence
+            else f"{sentence.sentence}{SILENCE_EOS}"
+        )
+
     with open(f"./projects/{project_name}/ds/train_list.txt", "w") as f:
-        data = "\n".join([f"{line.id}.wav|{line.phonemes}|0" for line in train_list])
+        data = "\n".join(
+            [f"{line.id}.wav|{get_phonemes(line)}|0" for line in train_list]
+        )
         f.write(data)
 
     with open(f"./projects/{project_name}/ds/val_list.txt", "w") as f:
-        data = "\n".join([f"{line.id}.wav|{line.phonemes}|0" for line in val_list])
+        data = "\n".join([f"{line.id}.wav|{get_phonemes(line)}|0" for line in val_list])
         f.write(data)
 
     shutil.make_archive(

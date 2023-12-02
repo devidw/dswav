@@ -65,7 +65,7 @@ class Sentence:
         if len(self.words) > 0 and len(self.content) == 0:
             return "".join(map(lambda x: x.word, self.words)).strip()
         elif len(self.words) == 0 and len(self.content) > 0:
-            return self.content
+            return self.content.strip()
         else:
             print(self.to_dict())
             raise Exception("bad sentence has content and words should only have one")
