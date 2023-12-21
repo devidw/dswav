@@ -7,7 +7,7 @@ readme = "README.md"
 
 [tool.poetry.dependencies]
 python = "3.11.6"
-gradio = "^4.4.1"
+gradio = "^4.11.0"
 setuptools = "^68.2.2"
 phonemizer = "^3.2.1"
 nltk = "^3.8.1"
