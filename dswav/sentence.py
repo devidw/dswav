@@ -26,18 +26,27 @@ class Word:
 
 
 class Sentence:
+    _id: Optional[str] = None
     words: List[Word]
     content: str = ""
-    _id: Optional[str] = None
+    speaker_id: str = ""
 
-    def __init__(self, id: Optional[str], content: str, words: List[Word]) -> None:
+    def __init__(
+        self,
+        id: Optional[str],
+        content: str,
+        words: List[Word],
+        speaker_id: str,
+    ) -> None:
         self._id = id if id else None
-        self.content = content
         self.words = words
+        self.content = content
+        self.speaker_id = speaker_id
 
     def to_dict(self):
         return {
             "id": self.id,
+            "speaker_id": self.speaker_id,
             "content": self.content,
             "words": [word.to_dict() for word in self.words],
         }
@@ -97,9 +106,17 @@ def read_sentences(project_name: str):
 
     for single in raw:
         words = list(
-            map(lambda x: Word(x["word"], x["start"], x["end"]), single["words"])
+            map(
+                lambda x: Word(x["word"], x["start"], x["end"]),
+                single["words"],
+            )
         )
-        sentence = Sentence(single["id"], single["content"], words)
+        sentence = Sentence(
+            single["id"],
+            single["content"],
+            words,
+            speaker_id=single["speaker_id"],
+        )
         sentences.append(sentence)
 
     return sentences
@@ -118,7 +135,7 @@ def write_sentences(project_name: str, sentences: List[Sentence]):
 def compute_sentences(words: List[Word]):
     """ """
     sentences: List[Sentence] = []
-    tmp: Sentence = Sentence(None, "", [])
+    tmp: Sentence = Sentence(None, "", [], "")
     is_multi = False
 
     for word in words:
@@ -151,7 +168,7 @@ def compute_sentences(words: List[Word]):
                 continue
 
             sentences.append(tmp)
-            tmp = Sentence(None, "", [])
+            tmp = Sentence(None, "", [], "")
             is_multi = False
 
     return sentences

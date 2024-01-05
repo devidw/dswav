@@ -71,6 +71,7 @@ def upload_handler(project_name: str, scp_cmd: str):
     args = scp_cmd.replace("%", f"./projects/{project_name}/ds.zip").split(" ")
     print(args)
     subprocess.run(args)
+    print("done")
 
 
 if __name__ == "__main__":
@@ -144,7 +145,7 @@ if __name__ == "__main__":
             button.click(add_ending_silence_handler, inputs=[project_name])
 
         with gr.Tab("mp3 to wav @ sr"):
-            sr = gr.Textbox(label="Sample Rate", value="22050")
+            sr = gr.Textbox(label="Sample Rate", value="24000")
             input_path = gr.Textbox(label="input mp3s path")
             output_path = gr.Textbox(label="output wavs path")
             button = gr.Button()

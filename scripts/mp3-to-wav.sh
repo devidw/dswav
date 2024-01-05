@@ -4,15 +4,6 @@ IN_DIR=$1
 OUT_DIR=$2
 SR=$3
 
+export OUT_DIR SR  # Export these variables so they're available to subshells
 
-# Loop through each MP3 file in the directory
-for file in "$IN_DIR"/*.mp3; do
-    # Skip if not a file
-    [ -f "$file" ] || continue
-
-    # Construct the WAV filename
-    base_name=$(basename "$file" .mp3)
-
-    # Convert MP3 to WAV using FFmpeg
-    ffmpeg -i "$file" -ar $SR "$OUT_DIR/$base_name.wav"
-done
+find "$IN_DIR" -name '*.mp3' | parallel -I% --max-args 1 ffmpeg -i % -ar $SR "$OUT_DIR/{/.}.wav"
