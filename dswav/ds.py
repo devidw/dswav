@@ -71,7 +71,7 @@ def combine_many(project_name: str, merges: List[str]):
                 )
             )
         )
-        # copy_files(f"{merge}/wavs", f"./projects/{project_name}/ds/wavs")
+        copy_files(f"{merge}/wavs", f"./projects/{project_name}/ds/wavs")
     write_sentences(project_name, sentences)
 
 

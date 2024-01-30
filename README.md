@@ -2,11 +2,16 @@
 
 Tool to build dataset for audio model training
 
-Takes single audio input file 
+Includes a series of helpers for dataset work, such as:
 
-Transcribes it using whisper and splits into sentences, chunks audio using ffmpeg into samples
+- transcribing audio source into a dataset of segments of text & audio pairs
+- combining differnt data sources
+- bulk lengthening audio samples
+- bulk conversation of mp3s to wav at given sample rate
+- building metadata files that can be used for training
 
-And builds metadata files that can be used for training
+Mostly focused around tooling for [StyleTTS2](https://github.com/yl4579/StyleTTS2) datasets, but can also be
+used for other kinds of models / libraries such as [coqui](https://github.com/coqui-ai/TTS)
 
 ## Usage
 
@@ -32,6 +37,21 @@ Also supports output format for StyleTTS2
 - `train_list.txt` 99 %
 - `val_list.txt` 1 %
 - `wavs/`
+
+## Data sources
+
+In order to import other data sources they must follow this structure:
+
+- /your/path/index.json
+- /your/path/wavs/[id].wav
+
+```ts
+{
+    id: string // unique identifier for each sample, should match file name in `./wavs/[id].wav` folder
+    content: string // the transcript
+    speaker_id?: string // optional when building for multi-speaker, unique on a per voice speaker basis
+}[]
+```
 
 ## Development
 
