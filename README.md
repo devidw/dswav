@@ -14,7 +14,7 @@ And builds metadata files that can be used for training
 docker run \
   -p 7860:7860 \
   -v ./projects:/app/projects \
-  ghcr.io/devidw/dswav:latest
+  ghcr.io/devidw/dswav:main
 ```
 
 ## TTS, LJSpeech
